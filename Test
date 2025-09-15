@@ -1,83 +1,96 @@
-sequenceDiagram
-    participant Client as Client Application
-    participant LB as Load Balancer
-    participant D&D as D&D System
-    participant BOB as BOB Service<br/>(Clustered)
-    participant BBPOB as BBPOB Service<br/>(Clustered)
-    participant Cache as Redis Cache
-    participant Queue as Message Queue<br/>(Async Processing)
-    participant BlobStore as Blob Storage<br/>(High Throughput)
-    participant SS as SS (Final Storage)
-    participant CDN as CDN<br/>(Content Delivery)
-    participant Monitor as Monitoring<br/>(Metrics/Health)
+@startuml
+!theme plain
+title D&D Document Storage - Option 1 Metadata Flag Controlled Retention
 
-    Note over Client, Monitor: PERFORMANCE OPTIMIZED FLOW
+participant "D&D System" as DD
+participant "BOB Service\n(Clustered)" as BOB
+participant "Simple Storage (SS)" as SS
+participant "Hard Hat Container\n(EPM Folder)" as Container
+participant "Metadata Store" as Metadata
+participant "Retention Policy\nEngine" as Policy
 
-    Client->>LB: Upload Document (with size check)
-    LB->>LB: Route based on load & document type
-    
-    alt Large Document (>10MB) - Optimized Path
-        LB->>BOB: Route to available instance
-        BOB->>Cache: Check if document exists (dedup)
-        Cache-->>BOB: Cache miss
-        
-        par Parallel Processing
-            BOB->>BlobStore: Stream upload (chunked)
-            and BOB->>Queue: Queue metadata processing
-            and BOB->>Monitor: Log upload metrics
-        end
-        
-        BlobStore-->>BOB: Upload complete + checksum
-        BOB->>Cache: Store document reference + metadata
-        
-        Queue->>BOB: Process metadata (async)
-        BOB->>SS: Bulk transfer with optimized metadata
-        BOB->>CDN: Cache frequently accessed docs
-        BOB->>D&D: Return reference (non-blocking)
-        D&D->>Client: Immediate confirmation
-        
-        Note over BOB, SS: Background: Cleanup blob storage<br/>after SS confirmation
-    
-    else Small Document (<10MB) - Direct Path
-        LB->>BBPOB: Route to available instance
-        BBPOB->>Cache: Check cache for similar requests
-        alt Cache Hit
-            Cache-->>BBPOB: Return cached result
-            BBPOB->>Client: Immediate response
-        else Cache Miss
-            BBPOB->>SS: Direct upload with metadata
-            SS-->>BBPOB: Storage confirmation
-            BBPOB->>Cache: Cache result for reuse
-            BBPOB->>Client: Response
-        end
-    end
+note over DD, Policy : OPTION 1: IMMEDIATE STORAGE WITH METADATA FLAG CONTROL
 
-    Note over Client, Monitor: PERFORMANCE OPTIMIZATIONS
+== Document Upload Phase ==
+DD -> BOB : Upload D&D document (no BID available)
+BOB -> BOB : Generate EPM code for folder naming
+BOB -> Container : Check/Create folder named after EPM code
 
-    rect rgb(240, 255, 240)
-        Note over Client, Monitor: 1. UPLOAD OPTIMIZATIONS
-        Note over BlobStore: • Chunked/streaming uploads<br/>• Parallel chunk processing<br/>• Resume capability for failures<br/>• Compression for text documents
-    end
+BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
+note right : Upload with metadata flag\nfor short retention period
 
-    rect rgb(240, 240, 255)
-        Note over Client, Monitor: 2. CACHING STRATEGY
-        Note over Cache: • Document deduplication<br/>• Metadata caching<br/>• Frequent access patterns<br/>• Smart cache invalidation
-    end
+SS -> Container : Store document in EPM folder
+SS -> Metadata : Store document metadata + retention flag
+Metadata --> SS : Metadata stored with exception flag
+SS --> BOB : Upload confirmation + document reference
+BOB --> DD : Return document reference (immediate)
 
-    rect rgb(255, 240, 240)
-        Note over Client, Monitor: 3. ASYNC PROCESSING
-        Note over Queue: • Non-blocking uploads<br/>• Batch metadata processing<br/>• Background cleanup tasks<br/>• Retry mechanisms
-    end
+note over SS, Policy : Document stored with exceptional\nretention policy flag active
 
-    rect rgb(255, 255, 240)
-        Note over Client, Monitor: 4. STORAGE OPTIMIZATION
-        Note over SS: • Bulk transfers<br/>• Optimized metadata format<br/>• Compression at rest<br/>• Tiered storage (hot/cold)
-    end
+== Retention Policy Application ==
+Policy -> Metadata : Check document retention requirements
+alt Metadata flag exists (exceptional retention)
+    Policy -> Policy : Apply short retention period
+    note right : Metadata flag controls\ntemporary retention
+else No metadata flag
+    Policy -> Container : Apply folder-level retention policy
+    note right : Fallback to folder-level\nretention policy
+end
 
-    rect rgb(245, 240, 255)
-        Note over Client, Monitor: 5. MONITORING & SCALING
-        Note over Monitor: • Real-time performance metrics<br/>• Auto-scaling triggers<br/>• Health checks<br/>• Bottleneck detection
-    end
+== BID Available - Metadata Update ==
+DD -> BOB : BID becomes available
+BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
+note right : Update metadata with BID\nand remove retention flag
 
-    Note over Client, Monitor: PERFORMANCE METRICS TO TRACK
-    Note over Monitor: • Upload throughput (MB/s)<br/>• Processing latency (p95, p99)<br/>• Cache hit rates<br/>• Queue depth<br/>• Storage I/O patterns<br/>• Error rates & retries
+SS -> Metadata : Update document metadata + remove flag
+Metadata --> SS : Metadata updated, flag removed
+SS --> BOB : Update confirmation
+BOB --> DD : Metadata update complete
+
+note over Policy : With flag removed, retention\nreverts to folder-level policy
+
+== Retention Policy Execution ==
+Policy -> Metadata : Periodic retention check
+alt Short retention period expired (flag active)
+    Policy -> SS : Purge document
+    SS -> Container : Remove document from storage
+    SS --> Policy : Document purged
+else Folder-level retention (no flag)
+    Policy -> Policy : Apply standard retention period
+    note right : Standard business retention\nrules apply
+end
+
+== System Specifications ==
+note over DD, Policy : TECHNICAL CONSTRAINTS & BENEFITS
+
+note over SS #lightblue
+**Simple Storage Limits:**
+• Max document size: 101MB
+• Max container size: 500TB (expandable to 2PB)
+• Current Hard Hat container: No existing retention policies
+end note
+
+note over BOB #lightgreen
+**Implementation Benefits:**
+• No additional storage costs
+• Programmable solution via API
+• Lower system complexity
+• Immediate document availability
+end note
+
+note over Policy #lightyellow
+**Retention Policy Hierarchy:**
+1. Metadata (flag) controlled retention (primary)
+2. Folder-level retention policy (fallback)
+3. Container-level policy (if folder not set)
+end note
+
+note over Container #lightcoral
+**Folder Structure:**
+• Hard Hat container
+• EPM-code named folders
+• Folder-level retention policies
+• Flag-based exceptional retention
+end note
+
+@enduml
