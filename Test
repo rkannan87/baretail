@@ -94,3 +94,151 @@ note over Container #lightcoral
 end note
 
 @enduml
+
+
+@startuml
+!theme plain
+title D&D Document Storage - Performance Optimized Flow with Metadata Flag Control
+
+participant "Client Application" as Client
+participant "Load Balancer" as LB
+participant "D&D System" as DD
+participant "BOB Service\n(Clustered)" as BOB
+participant "BBPOB Service\n(Clustered)" as BBPOB
+participant "Redis Cache" as Cache
+participant "Message Queue\n(Async Processing)" as Queue
+participant "Blob Storage\n(High Throughput)" as BlobStore
+participant "SS (Final Storage)\n+ Hard Hat Container" as SS
+participant "CDN\n(Content Delivery)" as CDN
+participant "Monitoring\n(Metrics/Health)" as Monitor
+
+note over Client, Monitor : PERFORMANCE OPTIMIZED FLOW WITH D&D INTEGRATION
+
+Client -> LB : Upload Document (with size check)
+LB -> LB : Route based on load & document type
+
+alt Large Document (>10MB) - Optimized Path
+    LB -> BOB : Route to available instance
+    BOB -> Cache : Check if document exists (dedup)
+    Cache --> BOB : Cache miss
+    
+    par Parallel Processing
+        BOB -> BlobStore : Stream upload (chunked)
+    also
+        BOB -> Queue : Queue metadata processing
+    also
+        BOB -> Monitor : Log upload metrics
+    end
+    
+    BlobStore --> BOB : Upload complete + checksum
+    BOB -> Cache : Store document reference + metadata
+    
+    Queue -> BOB : Process metadata (async)
+    
+    == D&D Document Storage - Option 1 Implementation ==
+    BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
+    note right : Upload to Hard Hat container\nwith EPM folder + metadata flag
+    
+    SS -> SS : Store in EPM-named folder with exceptional retention flag
+    SS --> BOB : Storage confirmation + document reference
+    
+    BOB -> CDN : Cache frequently accessed docs
+    BOB -> DD : Return reference (non-blocking)
+    DD -> Client : Immediate confirmation
+    
+    note over BOB, SS : Background: Cleanup blob storage\nafter SS confirmation
+    
+    == BID Update Process (When Available) ==
+    DD -> BOB : BID becomes available
+    BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
+    note right : Update metadata with BID\nremove exceptional retention flag
+    SS -> SS : Update metadata, remove flag, apply folder-level retention
+    SS --> BOB : Metadata update confirmation
+
+else Small Document (<10MB) - Direct Path
+    LB -> BBPOB : Route to available instance
+    BBPOB -> Cache : Check cache for similar requests
+    alt Cache Hit
+        Cache --> BBPOB : Return cached result
+        BBPOB -> Client : Immediate response
+    else Cache Miss
+        == Direct SS Storage for Small Documents ==
+        BBPOB -> SS : Direct upload with metadata flag
+        note right : Store in Hard Hat container\nwith exceptional retention flag
+        SS --> BBPOB : Storage confirmation
+        BBPOB -> Cache : Cache result for reuse
+        BBPOB -> Client : Response
+        
+        == BID Update for Small Documents ==
+        note over BBPOB, SS : When BID available: update metadata\nand remove retention flag
+    end
+end
+
+== D&D Retention Policy Management ==
+note over SS #lightblue
+**Retention Policy Hierarchy:**
+1. Metadata flag controlled (primary) - short retention
+2. Folder-level policy (fallback) - standard retention
+3. Documents without BID purged after short period
+4. Documents with BID follow folder-level retention
+end note
+
+== Performance Optimizations ==
+note over Client, Monitor : UPLOAD OPTIMIZATIONS
+note over BlobStore #lightgreen
+• Chunked/streaming uploads
+• Parallel chunk processing
+• Resume capability for failures
+• Compression for text documents
+end note
+
+note over Client, Monitor : CACHING STRATEGY
+note over Cache #lightblue
+• Document deduplication
+• Metadata caching
+• Frequent access patterns
+• Smart cache invalidation
+end note
+
+note over Client, Monitor : ASYNC PROCESSING
+note over Queue #lightcoral
+• Non-blocking uploads
+• Batch metadata processing
+• Background cleanup tasks
+• Retry mechanisms
+end note
+
+note over Client, Monitor : STORAGE OPTIMIZATION
+note over SS #lightyellow
+• Bulk transfers to SS
+• Optimized metadata format
+• Hard Hat container with EPM folders
+• Metadata flag controlled retention
+• Folder-level fallback policies
+• Max document size: 101MB (SS limit)
+• Container capacity: 500TB (expandable to 2PB)
+end note
+
+note over Client, Monitor : MONITORING & SCALING
+note over Monitor #lavender
+• Real-time performance metrics
+• Auto-scaling triggers
+• Health checks
+• Bottleneck detection
+• D&D document retention tracking
+• BID availability monitoring
+end note
+
+note over Client, Monitor : PERFORMANCE METRICS TO TRACK
+note over Monitor
+• Upload throughput (MB/s)
+• Processing latency (p95, p99)
+• Cache hit rates
+• Queue depth
+• Storage I/O patterns
+• Error rates & retries
+• D&D document retention compliance
+• BID update success rates
+end note
+
+@enduml
