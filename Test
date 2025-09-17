@@ -1,244 +1,339 @@
-@startuml
-!theme plain
-title D&D Document Storage - Option 1 Metadata Flag Controlled Retention
-
-participant "D&D System" as DD
-participant "BOB Service\n(Clustered)" as BOB
-participant "Simple Storage (SS)" as SS
-participant "Hard Hat Container\n(EPM Folder)" as Container
-participant "Metadata Store" as Metadata
-participant "Retention Policy\nEngine" as Policy
-
-note over DD, Policy : OPTION 1: IMMEDIATE STORAGE WITH METADATA FLAG CONTROL
-
-== Document Upload Phase ==
-DD -> BOB : Upload D&D document (no BID available)
-BOB -> BOB : Generate EPM code for folder naming
-BOB -> Container : Check/Create folder named after EPM code
-
-BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
-note right : Upload with metadata flag\nfor short retention period
-
-SS -> Container : Store document in EPM folder
-SS -> Metadata : Store document metadata + retention flag
-Metadata --> SS : Metadata stored with exception flag
-SS --> BOB : Upload confirmation + document reference
-BOB --> DD : Return document reference (immediate)
-
-note over SS, Policy : Document stored with exceptional\nretention policy flag active
-
-== Retention Policy Application ==
-Policy -> Metadata : Check document retention requirements
-alt Metadata flag exists (exceptional retention)
-    Policy -> Policy : Apply short retention period
-    note right : Metadata flag controls\ntemporary retention
-else No metadata flag
-    Policy -> Container : Apply folder-level retention policy
-    note right : Fallback to folder-level\nretention policy
-end
-
-== BID Available - Metadata Update ==
-DD -> BOB : BID becomes available
-BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
-note right : Update metadata with BID\nand remove retention flag
-
-SS -> Metadata : Update document metadata + remove flag
-Metadata --> SS : Metadata updated, flag removed
-SS --> BOB : Update confirmation
-BOB --> DD : Metadata update complete
-
-note over Policy : With flag removed, retention\nreverts to folder-level policy
-
-== Retention Policy Execution ==
-Policy -> Metadata : Periodic retention check
-alt Short retention period expired (flag active)
-    Policy -> SS : Purge document
-    SS -> Container : Remove document from storage
-    SS --> Policy : Document purged
-else Folder-level retention (no flag)
-    Policy -> Policy : Apply standard retention period
-    note right : Standard business retention\nrules apply
-end
-
-== System Specifications ==
-note over DD, Policy : TECHNICAL CONSTRAINTS & BENEFITS
-
-note over SS #lightblue
-**Simple Storage Limits:**
-• Max document size: 101MB
-• Max container size: 500TB (expandable to 2PB)
-• Current Hard Hat container: No existing retention policies
-end note
-
-note over BOB #lightgreen
-**Implementation Benefits:**
-• No additional storage costs
-• Programmable solution via API
-• Lower system complexity
-• Immediate document availability
-end note
-
-note over Policy #lightyellow
-**Retention Policy Hierarchy:**
-1. Metadata (flag) controlled retention (primary)
-2. Folder-level retention policy (fallback)
-3. Container-level policy (if folder not set)
-end note
-
-note over Container #lightcoral
-**Folder Structure:**
-• Hard Hat container
-• EPM-code named folders
-• Folder-level retention policies
-• Flag-based exceptional retention
-end note
-
-@enduml
-
-
-@startuml
-!theme plain
-title D&D Document Storage - Performance Optimized Flow with Metadata Flag Control
-
-participant "Client Application" as Client
-participant "Load Balancer" as LB
-participant "D&D System" as DD
-participant "BOB Service\n(Clustered)" as BOB
-participant "BBPOB Service\n(Clustered)" as BBPOB
-participant "Redis Cache" as Cache
-participant "Message Queue\n(Async Processing)" as Queue
-participant "Blob Storage\n(High Throughput)" as BlobStore
-participant "SS (Final Storage)\n+ Hard Hat Container" as SS
-participant "CDN\n(Content Delivery)" as CDN
-participant "Monitoring\n(Metrics/Health)" as Monitor
-
-note over Client, Monitor : PERFORMANCE OPTIMIZED FLOW WITH D&D INTEGRATION
-
-Client -> LB : Upload Document (with size check)
-LB -> LB : Route based on load & document type
-
-alt Large Document (>10MB) - Optimized Path
-    LB -> BOB : Route to available instance
-    BOB -> Cache : Check if document exists (dedup)
-    Cache --> BOB : Cache miss
-    
-    par Parallel Processing
-        BOB -> BlobStore : Stream upload (chunked)
-    also
-        BOB -> Queue : Queue metadata processing
-    also
-        BOB -> Monitor : Log upload metrics
-    end
-    
-    BlobStore --> BOB : Upload complete + checksum
-    BOB -> Cache : Store document reference + metadata
-    
-    Queue -> BOB : Process metadata (async)
-    
-    == D&D Document Storage - Option 1 Implementation ==
-    BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
-    note right : Upload to Hard Hat container\nwith EPM folder + metadata flag
-    
-    SS -> SS : Store in EPM-named folder with exceptional retention flag
-    SS --> BOB : Storage confirmation + document reference
-    
-    BOB -> CDN : Cache frequently accessed docs
-    BOB -> DD : Return reference (non-blocking)
-    DD -> Client : Immediate confirmation
-    
-    note over BOB, SS : Background: Cleanup blob storage\nafter SS confirmation
-    
-    == BID Update Process (When Available) ==
-    DD -> BOB : BID becomes available
-    BOB -> SS : PUT /repositories/{repo-id}/documents/{document-id}
-    note right : Update metadata with BID\nremove exceptional retention flag
-    SS -> SS : Update metadata, remove flag, apply folder-level retention
-    SS --> BOB : Metadata update confirmation
-
-else Small Document (<10MB) - Direct Path
-    LB -> BBPOB : Route to available instance
-    BBPOB -> Cache : Check cache for similar requests
-    alt Cache Hit
-        Cache --> BBPOB : Return cached result
-        BBPOB -> Client : Immediate response
-    else Cache Miss
-        == Direct SS Storage for Small Documents ==
-        BBPOB -> SS : Direct upload with metadata flag
-        note right : Store in Hard Hat container\nwith exceptional retention flag
-        SS --> BBPOB : Storage confirmation
-        BBPOB -> Cache : Cache result for reuse
-        BBPOB -> Client : Response
-        
-        == BID Update for Small Documents ==
-        note over BBPOB, SS : When BID available: update metadata\nand remove retention flag
-    end
-end
-
-== D&D Retention Policy Management ==
-note over SS #lightblue
-**Retention Policy Hierarchy:**
-1. Metadata flag controlled (primary) - short retention
-2. Folder-level policy (fallback) - standard retention
-3. Documents without BID purged after short period
-4. Documents with BID follow folder-level retention
-end note
-
-== Performance Optimizations ==
-note over Client, Monitor : UPLOAD OPTIMIZATIONS
-note over BlobStore #lightgreen
-• Chunked/streaming uploads
-• Parallel chunk processing
-• Resume capability for failures
-• Compression for text documents
-end note
-
-note over Client, Monitor : CACHING STRATEGY
-note over Cache #lightblue
-• Document deduplication
-• Metadata caching
-• Frequent access patterns
-• Smart cache invalidation
-end note
-
-note over Client, Monitor : ASYNC PROCESSING
-note over Queue #lightcoral
-• Non-blocking uploads
-• Batch metadata processing
-• Background cleanup tasks
-• Retry mechanisms
-end note
-
-note over Client, Monitor : STORAGE OPTIMIZATION
-note over SS #lightyellow
-• Bulk transfers to SS
-• Optimized metadata format
-• Hard Hat container with EPM folders
-• Metadata flag controlled retention
-• Folder-level fallback policies
-• Max document size: 101MB (SS limit)
-• Container capacity: 500TB (expandable to 2PB)
-end note
-
-note over Client, Monitor : MONITORING & SCALING
-note over Monitor #lavender
-• Real-time performance metrics
-• Auto-scaling triggers
-• Health checks
-• Bottleneck detection
-• D&D document retention tracking
-• BID availability monitoring
-end note
-
-note over Client, Monitor : PERFORMANCE METRICS TO TRACK
-note over Monitor
-• Upload throughput (MB/s)
-• Processing latency (p95, p99)
-• Cache hit rates
-• Queue depth
-• Storage I/O patterns
-• Error rates & retries
-• D&D document retention compliance
-• BID update success rates
-end note
-
-@enduml
+<svg viewBox="0 0 1600 1200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .presentation-layer { fill: #eff6ff; stroke: #3b82f6; stroke-width: 2; }
+  .api-layer { fill: #f0fdf4; stroke: #22c55e; stroke-width: 2; }
+  .business-layer { fill: #fefce8; stroke: #eab308; stroke-width: 2; }
+  .integration-layer { fill: #fdf2f8; stroke: #ec4899; stroke-width: 2; }
+  .data-layer { fill: #f3f4f6; stroke: #6b7280; stroke-width: 2; }
+  .external { fill: #f3e8ff; stroke: #7c3aed; stroke-width: 2; }
+  
+  .new-component { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; }
+  .modified-component { fill: #fef3c7; stroke: #eab308; stroke-width: 2; }
+  .leveraged-component { fill: #f1f5f9; stroke: #64748b; stroke-width: 2; }
+  .retired-component { fill: #fee2e2; stroke: #dc2626; stroke-width: 2; }
+  
+  .text { font-family: &apos;Arial&apos;, sans-serif; font-size: 11px; text-anchor: middle; fill: #1f2937; }
+  .text-start { font-family: &apos;Arial&apos;, sans-serif; font-size: 11px; text-anchor: start; fill: #1f2937; }
+  .title { font-size: 12px; font-weight: bold; text-anchor: middle; fill: #1f2937; }
+  .layer-title { font-size: 16px; font-weight: bold; fill: #1f2937; text-anchor: start; }
+  .service-code { font-size: 10px; fill: #64748b; font-weight: normal; text-anchor: middle; }
+  
+  .flow { stroke: #6b7280; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .layer-flow { stroke: #059669; stroke-width: 2; fill: none; marker-end: url(#layer-arrow); }
+  .data-flow { stroke: #0284c7; stroke-width: 1.5; fill: none; marker-end: url(#data-arrow); }
+  
+  .layer-bg { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; opacity: 0.7; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6b7280"/>
+    </marker>
+    <marker id="layer-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#059669"/>
+    </marker>
+    <marker id="data-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#0284c7"/>
+    </marker>
+  </defs>
+<!--Title-->
+  <text x="800" y="30" class="text" font-size="20" font-weight="bold">Business Onboarding - Complete Layered Architecture</text>
+<!--Layer Background Rectangles-->
+  <rect x="20" y="60" width="1560" height="150" class="layer-bg" rx="8"/>
+  <rect x="20" y="230" width="1560" height="120" class="layer-bg" rx="8"/>
+  <rect x="20" y="370" width="1560" height="200" class="layer-bg" rx="8"/>
+  <rect x="20" y="590" width="1560" height="140" class="layer-bg" rx="8"/>
+  <rect x="20" y="750" width="1560" height="140" class="layer-bg" rx="8"/>
+<!--Layer Labels-->
+  <text x="40" y="85" class="layer-title">1. Presentation and External Entities Layer</text>
+  <text x="200" y="110" class="text" font-size="12" fill="#4b5563">User interfaces, external entities, and presentation logic</text>
+  <text x="40" y="255" class="layer-title">2. API Gateway and BFF Layer</text>
+  <text x="200" y="275" class="text" font-size="12" fill="#4b5563">Backend for Frontend, authentication, and API routing</text>
+  <text x="40" y="395" class="layer-title">3. Business Logic and Microservices Layer</text>
+  <text x="200" y="415" class="text" font-size="12" fill="#4b5563">Core business processes, domain logic, and microservices</text>
+  <text x="40" y="615" class="layer-title">4. Integration and External Services Layer</text>
+  <text x="200" y="635" class="text" font-size="12" fill="#4b5563">External API integrations and third-party services</text>
+  <text x="40" y="775" class="layer-title">5. Data Access and Persistence Layer</text>
+  <text x="200" y="795" class="text" font-size="12" fill="#4b5563">Databases, storage systems, and data management</text>
+<!--LAYER 1: PRESENTATION & EXTERNAL ENTITIES-->
+<!--External Entities-->
+  <rect x="80" y="120" width="100" height="70" class="external" rx="5"/>
+  <text x="130" y="145" class="title">Customer</text>
+  <text x="130" y="162" class="text">(Business Owner)</text>
+  <text x="130" y="179" class="service-code">External Entity</text>
+  <rect x="200" y="120" width="100" height="70" class="external" rx="5"/>
+  <text x="250" y="145" class="title">Bank Staff</text>
+  <text x="250" y="162" class="text">(Internal Users)</text>
+  <text x="250" y="179" class="service-code">External Entity</text>
+  <rect x="320" y="120" width="100" height="70" class="external" rx="5"/>
+  <text x="370" y="140" class="title">3rd Party</text>
+  <text x="370" y="157" class="title">Vendor</text>
+  <text x="370" y="174" class="text">(Dyn/Dudsun)</text>
+<!--User Interfaces-->
+  <rect x="450" y="120" width="120" height="70" class="new-component" rx="5"/>
+  <text x="510" y="140" class="title">COB MFE</text>
+  <text x="510" y="157" class="text">Page Flow</text>
+  <text x="510" y="174" class="text">Customer Onboarding</text>
+  <rect x="590" y="120" width="120" height="70" class="new-component" rx="5"/>
+  <text x="650" y="135" class="title">COB Refresh</text>
+  <text x="650" y="152" class="title">MFE</text>
+  <text x="650" y="169" class="text">Refresh UI</text>
+  <text x="650" y="186" class="service-code">NEW - KYC</text>
+  <rect x="730" y="120" width="120" height="70" class="new-component" rx="5"/>
+  <text x="790" y="145" class="title">BOB MFE</text>
+  <text x="790" y="162" class="text">Business</text>
+  <text x="790" y="179" class="text">Onboarding</text>
+  <rect x="870" y="120" width="120" height="70" class="new-component" rx="5"/>
+  <text x="930" y="135" class="title">BBPOB MFE</text>
+  <text x="930" y="152" class="text">Banking Product</text>
+  <text x="930" y="169" class="text">Onboarding</text>
+  <text x="930" y="186" class="service-code">NEW</text>
+  <rect x="1010" y="120" width="120" height="70" class="leveraged-component" rx="5"/>
+  <text x="1070" y="145" class="title">Business</text>
+  <text x="1070" y="162" class="title">Search</text>
+  <text x="1070" y="179" class="service-code">LEVERAGED</text>
+<!--LAYER 2: API GATEWAY & BFF-->
+<!--Backend for Frontend Services-->
+  <rect x="100" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="155" y="310" class="title">COB BFF</text>
+  <text x="155" y="327" class="service-code">NEW - BFF</text>
+  <rect x="230" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="285" y="305" class="title">COB Refresh</text>
+  <text x="285" y="322" class="title">BFF</text>
+  <text x="285" y="339" class="service-code">NEW - BFF</text>
+  <rect x="360" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="415" y="310" class="title">BOB BFF</text>
+  <text x="415" y="327" class="service-code">NEW - BFF</text>
+  <rect x="490" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="545" y="310" class="title">BBPOB BFF</text>
+  <text x="545" y="327" class="service-code">NEW - BFF</text>
+<!--Authentication & Gateway Services-->
+  <rect x="620" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="675" y="305" class="title">Authentication</text>
+  <text x="675" y="322" class="text">Passport</text>
+  <text x="675" y="339" class="service-code">NEW - BFNT</text>
+  <rect x="750" y="290" width="110" height="50" class="modified-component" rx="5"/>
+  <text x="805" y="310" class="title">SBH Digital</text>
+  <text x="805" y="327" class="service-code">MODIFIED - BRVN</text>
+  <rect x="880" y="290" width="110" height="50" class="modified-component" rx="5"/>
+  <text x="935" y="310" class="title">Digital Lobby</text>
+  <text x="935" y="327" class="service-code">MODIFIED - BOLB</text>
+  <rect x="1010" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="1065" y="300" class="title">Case Mgmt</text>
+  <text x="1065" y="317" class="text">Doc Generation</text>
+  <text x="1065" y="334" class="service-code">NEW</text>
+  <rect x="1140" y="290" width="110" height="50" class="modified-component" rx="5"/>
+  <text x="1195" y="310" class="title">SBH PEGA</text>
+  <text x="1195" y="327" class="service-code">MODIFIED - BRVN</text>
+  <rect x="1270" y="290" width="110" height="50" class="new-component" rx="5"/>
+  <text x="1325" y="300" class="title">Business</text>
+  <text x="1325" y="317" class="title">Central</text>
+  <text x="1325" y="334" class="service-code">NEW - BCAR</text>
+<!--LAYER 3: BUSINESS LOGIC & MICROSERVICES-->
+<!--Core BOB Services Row 1-->
+  <rect x="60" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="110" y="460" class="title">BOB API</text>
+  <text x="110" y="477" class="service-code">NEW - BRAT</text>
+  <rect x="180" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="230" y="455" class="title">BOB Customer</text>
+  <text x="230" y="472" class="text">Data Transport</text>
+  <text x="230" y="489" class="service-code">NEW - BOBCDTL</text>
+  <rect x="300" y="440" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="350" y="460" class="title">Customer Profile</text>
+  <text x="350" y="477" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="420" y="440" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="470" y="460" class="title">Customer Address</text>
+  <text x="470" y="477" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="540" y="440" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="590" y="460" class="title">Contact Methods</text>
+  <text x="590" y="477" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="660" y="440" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="710" y="460" class="title">Hierarchy</text>
+  <text x="710" y="477" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="780" y="440" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="830" y="460" class="title">Identification</text>
+  <text x="830" y="477" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="900" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="950" y="455" class="title">Customer</text>
+  <text x="950" y="472" class="text">Verification</text>
+  <text x="950" y="489" class="service-code">NEW - BFBK TBC</text>
+  <rect x="1020" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1070" y="455" class="title">Customer</text>
+  <text x="1070" y="472" class="text">Industry</text>
+  <text x="1070" y="489" class="service-code">NEW - BFBK</text>
+  <rect x="1140" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1190" y="455" class="title">Document</text>
+  <text x="1190" y="472" class="text">Storage</text>
+  <text x="1190" y="489" class="service-code">NEW - BCON</text>
+  <rect x="1260" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1310" y="460" class="title">AI ODX</text>
+  <text x="1310" y="477" class="service-code">NEW - AI/ML</text>
+  <rect x="1380" y="440" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1430" y="455" class="title">Doc Meaning</text>
+  <text x="1430" y="472" class="text">Logic</text>
+  <text x="1430" y="489" class="service-code">NEW - BTA/BSGH</text>
+<!--Business Services Row 2-->
+  <rect x="60" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="110" y="530" class="title">Open Doc Upload</text>
+  <text x="110" y="547" class="service-code">NEW - BBOLB</text>
+  <rect x="180" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="230" y="530" class="title">Retrieve Profile</text>
+  <text x="230" y="547" class="service-code">NEW - In Open</text>
+  <rect x="300" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="350" y="530" class="title">Link Card</text>
+  <text x="350" y="547" class="service-code">NEW - in profile</text>
+  <rect x="420" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="470" y="525" class="title">Retrieve Home</text>
+  <text x="470" y="542" class="text">Branch Office</text>
+  <text x="470" y="559" class="service-code">NEW</text>
+  <rect x="540" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="590" y="525" class="title">Deposit Product</text>
+  <text x="590" y="542" class="text">Setup</text>
+  <text x="590" y="559" class="service-code">NEW</text>
+  <rect x="660" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="710" y="530" class="title">Adjudication</text>
+  <text x="710" y="547" class="service-code">NEW</text>
+  <rect x="780" y="510" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="830" y="530" class="title">Country Codes</text>
+  <text x="830" y="547" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="900" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="950" y="525" class="title">Intended Use</text>
+  <text x="950" y="542" class="text">Reference</text>
+  <text x="950" y="559" class="service-code">NEW - BFXM</text>
+  <rect x="1020" y="510" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="1070" y="525" class="title">Address</text>
+  <text x="1070" y="542" class="text">Validation</text>
+  <text x="1070" y="559" class="service-code">LEVERAGED - BOLB</text>
+  <rect x="1140" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1190" y="525" class="title">Email Service</text>
+  <text x="1190" y="542" class="text">(Comms-MS)</text>
+  <text x="1190" y="559" class="service-code">NEW - BFNT-BERN</text>
+  <rect x="1260" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1310" y="525" class="title">Signing</text>
+  <text x="1310" y="542" class="text">Manager</text>
+  <text x="1310" y="559" class="service-code">NEW - BFNTD</text>
+  <rect x="1380" y="510" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1430" y="525" class="title">Document</text>
+  <text x="1430" y="542" class="text">Mapping</text>
+  <text x="1430" y="559" class="service-code">NEW</text>
+<!--LAYER 4: INTEGRATION & EXTERNAL SERVICES-->
+<!--External Data Sources Row 1-->
+  <rect x="80" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="130" y="665" class="title">EDL</text>
+  <text x="130" y="682" class="text">Send Emails</text>
+  <text x="130" y="699" class="service-code">LEVERAGED</text>
+  <rect x="200" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="250" y="665" class="title">FATCA/CRS</text>
+  <text x="250" y="682" class="text">BMCACRIS</text>
+  <text x="250" y="699" class="service-code">LEVERAGED</text>
+  <rect x="320" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="370" y="665" class="title">GDAP</text>
+  <text x="370" y="682" class="text">Processing</text>
+  <text x="370" y="699" class="service-code">LEVERAGED</text>
+  <rect x="440" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="490" y="670" class="title">Power BI</text>
+  <text x="490" y="687" class="service-code">LEVERAGED</text>
+  <rect x="560" y="650" width="100" height="50" class="new-component" rx="5"/>
+  <text x="610" y="665" class="title">Account Intended</text>
+  <text x="610" y="682" class="text">Use (Stores)</text>
+  <text x="610" y="699" class="service-code">NEW - BFXM</text>
+  <rect x="680" y="650" width="100" height="50" class="new-component" rx="5"/>
+  <text x="730" y="665" class="title">PIN Encryption</text>
+  <text x="730" y="682" class="service-code">NEW - BFNT</text>
+  <rect x="800" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="850" y="665" class="title">Customer</text>
+  <text x="850" y="682" class="text">Search</text>
+  <text x="850" y="699" class="service-code">LEVERAGED - BFBK</text>
+  <rect x="920" y="650" width="100" height="50" class="new-component" rx="5"/>
+  <text x="970" y="665" class="title">Customer</text>
+  <text x="970" y="682" class="text">Support</text>
+  <text x="970" y="699" class="service-code">NEW - BFNT</text>
+  <rect x="1040" y="650" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1090" y="665" class="title">Authentication</text>
+  <text x="1090" y="682" class="text">Services</text>
+  <text x="1090" y="699" class="service-code">NEW - BCON</text>
+  <rect x="1160" y="650" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="1210" y="670" class="title">Home Branch</text>
+  <text x="1210" y="687" class="service-code">LEVERAGED - BCON</text>
+  <rect x="1280" y="650" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1330" y="660" class="title">Digital Risk</text>
+  <text x="1330" y="677" class="text">Engine</text>
+  <text x="1330" y="694" class="service-code">NEW - BFTP</text>
+<!--External APIs-->
+  <rect x="1400" y="650" width="100" height="50" class="external" rx="5"/>
+  <text x="1450" y="670" class="title">Canada Post</text>
+  <text x="1450" y="687" class="service-code">External API</text>
+<!--LAYER 5: DATA ACCESS & PERSISTENCE-->
+<!--Data Stores Row 1-->
+  <rect x="80" y="810" width="100" height="50" class="new-component" rx="5"/>
+  <text x="130" y="830" class="title">CASL</text>
+  <text x="130" y="847" class="service-code">NEW - BBOLB</text>
+  <rect x="200" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="250" y="830" class="title">MCM</text>
+  <text x="250" y="847" class="service-code">LEV - BCJR</text>
+  <rect x="320" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="370" y="830" class="title">CI</text>
+  <text x="370" y="847" class="service-code">LEV - BCFR</text>
+  <rect x="440" y="810" width="100" height="50" class="new-component" rx="5"/>
+  <text x="490" y="830" class="title">OOA</text>
+  <text x="490" y="847" class="service-code">NEW - BBOLB</text>
+  <rect x="560" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="610" y="830" class="title">KT</text>
+  <text x="610" y="847" class="service-code">LEV - BCJY</text>
+  <rect x="680" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="730" y="820" class="title">Global Profile</text>
+  <text x="730" y="837" class="text">Advisory</text>
+  <text x="730" y="854" class="service-code">LEV - BCON</text>
+  <rect x="800" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="850" y="830" class="title">ROM</text>
+  <text x="850" y="847" class="service-code">LEVERAGED</text>
+  <rect x="920" y="810" width="100" height="50" class="new-component" rx="5"/>
+  <text x="970" y="830" class="title">e-Consent</text>
+  <text x="970" y="847" class="service-code">NEW - BFSB</text>
+  <rect x="1040" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="1090" y="820" class="title">Simple</text>
+  <text x="1090" y="837" class="title">Storage</text>
+  <text x="1090" y="854" class="service-code">LEV - BCON</text>
+  <rect x="1160" y="810" width="100" height="50" class="new-component" rx="5"/>
+  <text x="1210" y="820" class="title">MongoDB</text>
+  <text x="1210" y="837" class="text">Microservice</text>
+  <text x="1210" y="854" class="service-code">NEW</text>
+  <rect x="1280" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="1330" y="820" class="title">Global</text>
+  <text x="1330" y="837" class="title">Branch</text>
+  <text x="1330" y="854" class="service-code">LEV - BCON</text>
+  <rect x="1400" y="810" width="100" height="50" class="leveraged-component" rx="5"/>
+  <text x="1450" y="830" class="title">Repository</text>
+  <text x="1450" y="847" class="service-code">LEV - BCON</text>
+<!--Legend-->
+  <g id="legend">
+    <rect x="50" y="940" width="700" height="130" fill="white" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <text x="400" y="965" class="text" font-size="16" font-weight="bold">Architecture Status Legend</text>
+    <rect x="80" y="980" width="25" height="20" class="new-component"/>
+    <text x="115" y="995" class="text-start" font-weight="bold">NEW</text>
+    <text x="115" y="1010" class="text-start" font-size="10">Newly developed components for BOB</text>
+    <rect x="320" y="980" width="25" height="20" class="modified-component"/>
+    <text x="360" y="995" class="text-start" font-weight="bold">MODIFIED</text>
+    <text x="360" y="1010" class="text-start" font-size="10">Enhanced existing components</text>
+    <rect x="550" y="980" width="25" height="20" class="retired-component"/>
+    <text x="590" y="995" class="text-start" font-weight="bold">RETIRED</text>
+    <text x="590" y="1010" class="text-start" font-size="10">Components being phased out</text>
+    <text x="80" y="1035" class="text-start" font-weight="bold">Key Service Codes:</text>
+    <text x="80" y="1050" class="text-start" font-size="10">BFBK=Core Banking, MEVS=Document Vault, WSCON=Workflow, CAAS=Account System</text>
+    <text x="80" y="1065" class="text-start" font-size="10">BFNT=Notification, BOLB=Online Banking, BCON=Global Services, BRVN=Digital Channel</text>
+  </g>
+<!--Architecture Benefits-->
+  <g id="benefits">
+    <rect x="800" y="940" width="750" height="150" fill="white" stroke="#e2e8f0" stroke-width="2" rx="8"/>
+    <text x="1175" y="965" class="text" font-size="16" font-weight="bold">Layered Architecture Benefits</text>
+    <text x="820" y="990" class="text-start" font-weight="bold">Separation of Concerns:</text>
+    <text x="820" y="1005" class="text-start" font-size="10">• Each layer has specific responsibilities and abstractions</text>
+    <text x="820" y="1020" class="text-start" font-size="10">• Business logic isolated from presentation and data concerns</text>
+    <text x="820" y="1035" class="text-start" font-size="10">• Integration layer handles all external dependencies</text>
+    <text x="1200" y="990" class="text-start" font-weight="bold">Architecture Principles:</text>
+    <text x="1200" y="1005" class="text-start" font-size="10">• Top-down dependency flow only</text>
+    <text x="1200" y="1020" class="text-start" font-size="10">• Clear interfaces between layers</text>
+    <text x="1200" y="1035" class="text-start" font-size="10">• Microservices for scalability</text>
+    <text x="820" y="1055" class="text-start" font-weight="bold">Implementation Benefits:</text>
+    <text x="820" y="1070" class="text-start" font-size="10">• Maintainability • Scalability • Testability • Reusability • Technology Independence</text>
+  </g>
+</svg>
