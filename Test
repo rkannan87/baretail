@@ -1,91 +1,112 @@
-sequenceDiagram
-    actor Client
-    participant POB as POB System
-    participant BCAT as BCAT System
-    participant Queue as Fulfillment Queue
-    actor BCAS as BCAS Advisor
-    participant EDRR as EDRR System
-    participant WH as Work Hub
-    actor Branch as Branch Advisor
+@startuml
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+actor Client
+participant "POB System" as POB
+participant "BCAT System" as BCAT
+participant "Fulfillment\nQueue" as Queue
+actor "BCAS\nAdvisor" as BCAS
+participant "EDRR System" as EDRR
+participant "Work Hub" as WH
+actor "Branch\nAdvisor" as Branch
+
+== STEP 1: Onboarding Complete ==
+
+Client -> POB: Complete onboarding
+activate POB
+POB -> POB: Collect client &\naccount info
+POB -> BCAT: API Call: Create case\nwith client data
+deactivate POB
+
+== STEP 2: Auto-generate Case ==
+
+activate BCAT
+BCAT -> BCAT: Receive API request
+BCAT -> BCAT: Create case\n(Pending Action)
+BCAT -> Queue: Assign to\nfulfillment queue
+deactivate BCAT
+Queue --> BCAS: Case available\nfor review
+
+== STEP 3: BCAS Advisor Review ==
+
+activate BCAS
+BCAS -> Queue: Pull case from queue
+BCAS -> EDRR: Lookup client by\nCID/Account #
+activate EDRR
+EDRR --> BCAS: Return client details
+BCAS -> EDRR: Request documents
+EDRR --> BCAS: Return documents
+deactivate EDRR
+BCAS -> BCAS: Review documents
+
+alt Documents Complete
+    BCAS -> BCAT: Submit status:\nCompleted
+    BCAT -> POB: API: Acknowledgement
+    POB --> Client: Process complete
     
-    Note over Client,Branch: STEP 1: Onboarding Complete
-    Client->>POB: Complete onboarding
-    activate POB
-    POB->>POB: Collect client & account info
-    POB->>BCAT: API Call: Create case with client data
-    deactivate POB
+else Documents Need Correction
+    BCAS -> BCAT: Submit status:\nPending Corrections
+    deactivate BCAS
     
-    Note over POB,Queue: STEP 2: Auto-generate Case
+    == STEP 4: Branch Advisor Correction ==
+    
     activate BCAT
-    BCAT->>BCAT: Receive API request
-    BCAT->>BCAT: Create case (Pending Action)
-    BCAT->>Queue: Assign to fulfillment queue
+    BCAT -> WH: Transit case to\nWork Hub
     deactivate BCAT
-    Queue-->>BCAS: Case available for review
+    activate WH
+    WH -> Branch: Display in dashboard
+    deactivate WH
+    activate Branch
+    Branch -> WH: Access case
+    activate WH
+    Branch -> WH: Work on corrections
+    Branch -> WH: Submit updates
+    WH -> BCAT: Send updates\nback to BCAS
+    deactivate WH
+    deactivate Branch
     
-    Note over BCAS,EDRR: STEP 3: BCAS Advisor Review
+    == LOOP: Repeat Steps 3-4 until resolved ==
+    
+    activate BCAT
+    BCAT -> Queue: Re-assign to\nBCAS queue
+    deactivate BCAT
+    Queue --> BCAS: Case available\nfor re-review
+    
     activate BCAS
-    BCAS->>Queue: Pull case from queue
-    BCAS->>EDRR: Lookup client by CID/Account #
-    activate EDRR
-    EDRR-->>BCAS: Return client details
-    BCAS->>EDRR: Request documents
-    EDRR-->>BCAS: Return documents
-    deactivate EDRR
-    BCAS->>BCAS: Review documents
+    BCAS -> Queue: Pull updated case
+    BCAS -> BCAS: Review corrections
     
-    alt Documents Complete
-        BCAS->>BCAT: Submit status: Completed
-        BCAT->>POB: API: Acknowledgement
-        POB-->>Client: Process complete
-    else Documents Need Correction
-        BCAS->>BCAT: Submit status: Pending Corrections
+    alt Corrections Accepted
+        BCAS -> BCAT: Submit status:\nResolved/Completed
         deactivate BCAS
         
-        Note over BCAT,Branch: STEP 4: Branch Advisor Correction
+        == STEP 5: Final Acknowledgement ==
+        
         activate BCAT
-        BCAT->>WH: Transit case to Work Hub
+        BCAT -> POB: API: Acknowledgement
         deactivate BCAT
-        activate WH
-        WH->>Branch: Display in dashboard
-        deactivate WH
-        activate Branch
-        Branch->>WH: Access case
-        activate WH
-        Branch->>WH: Work on corrections
-        Branch->>WH: Submit updates
-        WH->>BCAT: Send updates back to BCAS
-        deactivate WH
-        deactivate Branch
+        activate POB
+        POB --> Client: Process complete
+        deactivate POB
         
-        Note over BCAS,Branch: LOOP: Repeat Steps 3-4 until resolved
-        activate BCAT
-        BCAT->>Queue: Re-assign to BCAS queue
-        deactivate BCAT
-        Queue-->>BCAS: Case available for re-review
-        
-        activate BCAS
-        BCAS->>Queue: Pull updated case
-        BCAS->>BCAS: Review corrections
-        
-        alt Corrections Accepted
-            BCAS->>BCAT: Submit status: Resolved/Completed
-            deactivate BCAS
-            Note over BCAT,POB: STEP 5: Final Acknowledgement
-            activate BCAT
-            BCAT->>POB: API: Acknowledgement
-            deactivate BCAT
-            activate POB
-            POB-->>Client: Process complete
-            deactivate POB
-        else More Corrections Needed
-            BCAS->>BCAT: Submit status: Pending Corrections
-            Note right of BCAS: Loop continues...
-        end
+    else More Corrections Needed
+        BCAS -> BCAT: Submit status:\nPending Corrections
+        note right
+            Loop continues...
+        end note
     end
-    
-    Note over Client,Branch: Process Complete
-    
-    rect rgb(255, 240, 240)
-        Note over Client,Branch: Error Handling Points:<br/>- API failures at Step 1, 2, 5<br/>- EDRR lookup failures<br/>- Timeout on advisor actions<br/>- Case routing errors
-    end
+end
+
+== Process Complete ==
+
+note over Client, Branch #FFEBEE
+    **Error Handling Points:**
+    • API failures at Step 1, 2, 5
+    • EDRR lookup failures
+    • Timeout on advisor actions
+    • Case routing errors
+end note
+
+@enduml
