@@ -1,112 +1,106 @@
 @startuml
-!theme plain
-skinparam sequenceMessageAlign center
-skinparam responseMessageBelowArrow true
+title Current vs. New Process - BCAT Case Management
 
-actor Client
-participant "POB System" as POB
-participant "BCAT System" as BCAT
-participant "Fulfillment\nQueue" as Queue
-actor "BCAS\nAdvisor" as BCAS
-participant "EDRR System" as EDRR
-participant "Work Hub" as WH
-actor "Branch\nAdvisor" as Branch
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontSize 11
+skinparam boxPadding 10
 
-== STEP 1: Onboarding Complete ==
+' Current Process
+box "CURRENT PROCESS (Issues)" #FFE6E6
+participant "SBH Digital" as SBH1
+participant "SBH Pega" as Pega1
+participant "BCAT" as BCAT1
+participant "Work Hub\n(DDA)" as WH1
+end box
 
-Client -> POB: Complete onboarding
-activate POB
-POB -> POB: Collect client &\naccount info
-POB -> BCAT: API Call: Create case\nwith client data
-deactivate POB
+note over SBH1,WH1 #FFCCCC
+**Issue 1:** SBH creates child case in BCAS, updates via API
+**Issue 2:** BCAT→Work Hub creates DUPLICATE cases (same Pega FCMR, no API)
+end note
 
-== STEP 2: Auto-generate Case ==
+SBH1 -> Pega1: Create case
+Pega1 -> BCAT1: Create child case for BCAS update
+BCAT1 -> Pega1: Update via API
+Pega1 -> SBH1: Update in Business Hub Summary
 
-activate BCAT
-BCAT -> BCAT: Receive API request
-BCAT -> BCAT: Create case\n(Pending Action)
-BCAT -> Queue: Assign to\nfulfillment queue
-deactivate BCAT
-Queue --> BCAS: Case available\nfor review
+BCAT1 -> WH1: Create case from data feed (DDA)
+note right: Duplicate case created!\nNo API integration
 
-== STEP 3: BCAS Advisor Review ==
+|||
 
-activate BCAS
-BCAS -> Queue: Pull case from queue
-BCAS -> EDRR: Lookup client by\nCID/Account #
-activate EDRR
-EDRR --> BCAS: Return client details
-BCAS -> EDRR: Request documents
-EDRR --> BCAS: Return documents
-deactivate EDRR
+' New Process
+box "NEW PROCESS - Step 1" #E6F3FF
+participant "POB" as POB
+participant "BCAT System" as BCAT2
+end box
+
+note over POB
+**Onboarding Flow**
+POB creates new API
+with client and account
+information
+end note
+
+POB -> BCAT2: API call with client data\n(at end of onboarding)
+note right #90EE90: ✓ API Integration
+
+|||
+
+box "NEW PROCESS - Step 2" #E6F3FF
+participant "BCAT System" as BCAT3
+end box
+
+BCAT3 -> BCAT3: Auto-generate case\n(Pending Action)
+BCAT3 -> BCAT3: Assign to fulfillment queue
+note right #90EE90: ✓ Automated case creation
+
+|||
+
+box "NEW PROCESS - Steps 3-4 (Loop)" #FFF9E6
+participant "BCAS Advisor" as BCAS
+participant "EDRR" as EDRR
+participant "Work Hub" as WH2
+participant "Branch Advisor" as BA
+end box
+
+BCAS -> EDRR: Locate client\n(using CID/account #)
+EDRR --> BCAS: Client documents
 BCAS -> BCAS: Review documents
+BCAS -> WH2: Submit with case status\n(completed, pending corrections, etc)
 
-alt Documents Complete
-    BCAS -> BCAT: Submit status:\nCompleted
-    BCAT -> POB: API: Acknowledgement
-    POB --> Client: Process complete
-    
-else Documents Need Correction
-    BCAS -> BCAT: Submit status:\nPending Corrections
-    deactivate BCAS
-    
-    == STEP 4: Branch Advisor Correction ==
-    
-    activate BCAT
-    BCAT -> WH: Transit case to\nWork Hub
-    deactivate BCAT
-    activate WH
-    WH -> Branch: Display in dashboard
-    deactivate WH
-    activate Branch
-    Branch -> WH: Access case
-    activate WH
-    Branch -> WH: Work on corrections
-    Branch -> WH: Submit updates
-    WH -> BCAT: Send updates\nback to BCAS
-    deactivate WH
-    deactivate Branch
-    
-    == LOOP: Repeat Steps 3-4 until resolved ==
-    
-    activate BCAT
-    BCAT -> Queue: Re-assign to\nBCAS queue
-    deactivate BCAT
-    Queue --> BCAS: Case available\nfor re-review
-    
-    activate BCAS
-    BCAS -> Queue: Pull updated case
-    BCAS -> BCAS: Review corrections
-    
-    alt Corrections Accepted
-        BCAS -> BCAT: Submit status:\nResolved/Completed
-        deactivate BCAS
-        
-        == STEP 5: Final Acknowledgement ==
-        
-        activate BCAT
-        BCAT -> POB: API: Acknowledgement
-        deactivate BCAT
-        activate POB
-        POB --> Client: Process complete
-        deactivate POB
-        
-    else More Corrections Needed
-        BCAS -> BCAT: Submit status:\nPending Corrections
-        note right
-            Loop continues...
-        end note
-    end
+WH2 -> BA: Case appears in dashboard
+BA -> BA: Work on pending corrections
+BA -> WH2: Provide updates back to BCAS
+
+note over BCAS,BA #FFFFCC
+**Loop:** Steps 3 & 4 repeat until
+BCAS review is Resolved/Completed
+end note
+
+alt Review Complete
+    WH2 -> BCAS: Status: Resolved
+else Corrections Needed
+    WH2 -> BCAS: Status: Pending Corrections
+    BCAS -> WH2: Resubmit after review
 end
 
-== Process Complete ==
+|||
 
-note over Client, Branch #FFEBEE
-    **Error Handling Points:**
-    • API failures at Step 1, 2, 5
-    • EDRR lookup failures
-    • Timeout on advisor actions
-    • Case routing errors
+box "NEW PROCESS - Step 5" #E6F3FF
+participant "BCAT Final" as BCAT4
+participant "POB Final" as POB2
+end box
+
+BCAT4 -> BCAT4: Review completed successfully
+BCAT4 -> POB2: API trigger\n(acknowledgement)
+note right #90EE90: ✓ Closed loop notification
+
+|||
+
+note over SBH1,POB2 #E6FFE6
+**Future Consideration:**
+Extend this process to replace existing BCAS solution
+for cases initiated from Branch
 end note
 
 @enduml
