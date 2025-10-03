@@ -1,394 +1,91 @@
-<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<style>
-  .process { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; }
-  .datastore { fill: #f0f9ff; stroke: #16a34a; stroke-width: 2; }
-  .external { fill: #f3e8ff; stroke: #7c3aed; stroke-width: 2; }
-  .decision { fill: #fef3c7; stroke: #d97706; stroke-width: 2; }
-  .data-flow { fill: #dcfce7; stroke: #059669; stroke-width: 2; }
-  
-  .text { font-family: 'Arial', sans-serif; font-size: 10px; text-anchor: middle; fill: #1f2937; }
-  .text-start { font-family: 'Arial', sans-serif; font-size: 10px; text-anchor: start; fill: #1f2937; }
-  .title { font-size: 11px; font-weight: bold; text-anchor: middle; fill: #1f2937; }
-  .section-title { font-size: 14px; font-weight: bold; fill: #1f2937; text-anchor: start; }
-  .flow-label { font-size: 9px; fill: #374151; text-anchor: middle; font-weight: 500; }
-  .service-code { font-size: 8px; fill: #64748b; font-weight: normal; text-anchor: middle; }
-  
-  .primary-flow { stroke: #059669; stroke-width: 2; fill: none; marker-end: url(#primary-arrow); }
-  .data-read-flow { stroke: #0284c7; stroke-width: 2; fill: none; marker-end: url(#data-arrow); }
-  .validation-flow { stroke: #ea580c; stroke-width: 2; fill: none; marker-end: url(#validation-arrow); }
-  .error-flow { stroke: #dc2626; stroke-width: 3; fill: none; marker-end: url(#error-arrow); stroke-dasharray: "10,5"; }
-  
-  .process-area { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; opacity: 0.8; }
-</style>
-<marker id="primary-arrow" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
-  <polygon points="0 0, 6 2.5, 0 5" fill="#059669" />
-</marker>
-<marker id="data-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-  <polygon points="0 0, 8 3, 0 6" fill="#0284c7" />
-</marker>
-<marker id="validation-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-  <polygon points="0 0, 8 3, 0 6" fill="#ea580c" />
-</marker>
-<marker id="error-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-  <polygon points="0 0, 10 4, 0 8" fill="#dc2626" />
-</marker>
-</defs>
-
-<!-- Title -->
-<text x="800" y="25" class="text" font-size="18" font-weight="bold">Business Onboarding - Application Data & Process Flow</text>
-
-<!-- Process Areas Background -->
-<rect x="50" y="60" width="500" height="180" class="process-area" rx="8"/>
-<rect x="570" y="60" width="500" height="180" class="process-area" rx="8"/>
-<rect x="1090" y="60" width="480" height="180" class="process-area" rx="8"/>
-<rect x="50" y="260" width="1520" height="160" class="process-area" rx="8"/>
-<rect x="50" y="440" width="1520" height="120" class="process-area" rx="8"/>
-<rect x="50" y="580" width="1520" height="140" class="process-area" rx="8"/>
-
-<!-- Process Area Labels -->
-<text x="70" y="80" class="section-title">Application Initiation</text>
-<text x="590" y="80" class="section-title">Data Collection & Validation</text>
-<text x="1110" y="80" class="section-title">External Verification</text>
-<text x="70" y="280" class="section-title">Business Logic Processing</text>
-<text x="70" y="460" class="section-title">Integration & External Services</text>
-<text x="70" y="600" class="section-title">Data Storage & Persistence</text>
-
-<!-- APPLICATION INITIATION AREA -->
-<rect x="80" y="100" width="100" height="50" class="external" rx="5"/>
-<text x="130" y="120" class="title">Customer</text>
-<text x="130" y="135" class="text">(Business Owner)</text>
-
-<rect x="200" y="100" width="100" height="50" class="process" rx="5"/>
-<text x="250" y="115" class="title">BOB SPA</text>
-<text x="250" y="130" class="text">Customer UI</text>
-<text x="250" y="145" class="service-code">Face Then</text>
-
-<rect x="320" y="100" width="100" height="50" class="process" rx="5"/>
-<text x="370" y="115" class="title">COB Refresh</text>
-<text x="370" y="130" class="text">Page Flow UI</text>
-<text x="370" y="145" class="service-code">KYC</text>
-
-<rect x="180" y="170" width="160" height="50" class="data-flow" rx="5"/>
-<text x="260" y="185" class="title">Application Data</text>
-<text x="260" y="200" class="text">Business Info, Contact Details</text>
-<text x="260" y="215" class="text">Documents, Identity Proof</text>
-
-<!-- DATA COLLECTION & VALIDATION AREA -->
-<rect x="600" y="100" width="100" height="50" class="process" rx="5"/>
-<text x="650" y="115" class="title">BOB BFF</text>
-<text x="650" y="130" class="text">API Gateway</text>
-<text x="650" y="145" class="service-code">Backend for Frontend</text>
-
-<rect x="720" y="100" width="100" height="50" class="process" rx="5"/>
-<text x="770" y="115" class="title">Authentication</text>
-<text x="770" y="130" class="text">Passport</text>
-<text x="770" y="145" class="service-code">BFNT</text>
-
-<rect x="850" y="100" width="100" height="50" class="process" rx="5"/>
-<text x="900" y="110" class="title">Document</text>
-<text x="900" y="125" class="title">Processing</text>
-<text x="900" y="140" class="text">Upload & Store</text>
-<text x="900" y="155" class="service-code">MEVS</text>
-
-<polygon points="650,180 700,200 650,220 600,200" class="decision"/>
-<text x="650" y="195" class="title">Data Valid?</text>
-<text x="650" y="210" class="service-code">Validation Check</text>
-
-<!-- EXTERNAL VERIFICATION AREA -->
-<rect x="1120" y="100" width="120" height="50" class="external" rx="5"/>
-<text x="1180" y="115" class="title">Canada Post API</text>
-<text x="1180" y="130" class="text">Address Validation</text>
-<text x="1180" y="145" class="service-code">External Service</text>
-
-<rect x="1260" y="100" width="120" height="50" class="external" rx="5"/>
-<text x="1320" y="115" class="title">Business Registry</text>
-<text x="1320" y="130" class="text">Registry Search</text>
-<text x="1320" y="145" class="service-code">External Database</text>
-
-<rect x="1400" y="100" width="120" height="50" class="external" rx="5"/>
-<text x="1460" y="115" class="title">3rd Party Vendor</text>
-<text x="1460" y="130" class="text">Dye and Durham</text>
-<text x="1460" y="145" class="service-code">External Verification</text>
-
-<rect x="1190" y="170" width="160" height="50" class="data-flow" rx="5"/>
-<text x="1270" y="185" class="title">Verification Results</text>
-<text x="1270" y="200" class="text">Address Validated, Registry Data</text>
-<text x="1270" y="215" class="text">Business Status Confirmed</text>
-
-<!-- BUSINESS LOGIC PROCESSING AREA -->
-<rect x="80" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="130" y="315" class="title">Customer CRUD</text>
-<text x="130" y="330" class="text">Profile Management</text>
-<text x="130" y="345" class="service-code">BFBK</text>
-
-<rect x="200" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="250" y="315" class="title">BOB Microservice</text>
-<text x="250" y="330" class="text">Core Logic</text>
-<text x="250" y="345" class="service-code">BFBK</text>
-
-<rect x="320" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="370" y="315" class="title">Registry Search</text>
-<text x="370" y="330" class="text">Business Lookup</text>
-<text x="370" y="345" class="service-code">BFBK</text>
-
-<rect x="440" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="490" y="315" class="title">Case Management</text>
-<text x="490" y="330" class="text">Workflow Engine</text>
-<text x="490" y="345" class="service-code">WSCON</text>
-
-<rect x="560" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="610" y="315" class="title">Document Storage</text>
-<text x="610" y="330" class="text">Simple Storage</text>
-<text x="610" y="345" class="service-code">BCON</text>
-
-<rect x="680" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="730" y="315" class="title">AI ODX</text>
-<text x="730" y="330" class="text">AI Processing</text>
-<text x="730" y="345" class="service-code">AI/ML</text>
-
-<rect x="800" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="850" y="315" class="title">Address Validation</text>
-<text x="850" y="330" class="text">Location Services</text>
-<text x="850" y="345" class="service-code">BOLB</text>
-
-<rect x="920" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="970" y="315" class="title">Customer Industry</text>
-<text x="970" y="330" class="text">Classification</text>
-<text x="970" y="345" class="service-code">BFBK</text>
-
-<rect x="1040" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="1090" y="315" class="title">Email Service</text>
-<text x="1090" y="330" class="text">Notifications</text>
-<text x="1090" y="345" class="service-code">BFNT</text>
-
-<rect x="1160" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="1210" y="315" class="title">Signing Manager</text>
-<text x="1210" y="330" class="text">Digital Signature</text>
-<text x="1210" y="345" class="service-code">BFNTD</text>
-
-<rect x="1280" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="1330" y="315" class="title">Country Codes</text>
-<text x="1330" y="330" class="text">Reference Data</text>
-<text x="1330" y="345" class="service-code">BFBK</text>
-
-<rect x="1400" y="300" width="100" height="50" class="process" rx="5"/>
-<text x="1450" y="315" class="title">Account Creation</text>
-<text x="1450" y="330" class="text">Product Setup</text>
-<text x="1450" y="345" class="service-code">CAAS</text>
-
-<polygon points="730,380 780,400 730,420 680,400" class="decision"/>
-<text x="730" y="395" class="title">Business Rules</text>
-<text x="730" y="410" class="service-code">Compliance Check</text>
-
-<!-- INTEGRATION & EXTERNAL SERVICES AREA -->
-<rect x="80" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="140" y="485" class="title">FATCA/CRS</text>
-<text x="140" y="500" class="service-code">BMCACRIS - Compliance</text>
-
-<rect x="220" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="280" y="485" class="title">GDAP Processing</text>
-<text x="280" y="500" class="service-code">Data Platform</text>
-
-<rect x="360" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="420" y="485" class="title">Digital Risk Engine</text>
-<text x="420" y="500" class="service-code">DRE/BFTP - Risk Assessment</text>
-
-<rect x="500" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="560" y="485" class="title">Global Profile Advisory</text>
-<text x="560" y="500" class="service-code">BCON - Global Services</text>
-
-<rect x="640" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="700" y="485" class="title">Home Branch</text>
-<text x="700" y="500" class="service-code">BCON - Location Services</text>
-
-<rect x="780" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="840" y="485" class="title">PIN Encryption</text>
-<text x="840" y="500" class="service-code">BFNT - Security</text>
-
-<rect x="920" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="980" y="485" class="title">Customer Support</text>
-<text x="980" y="500" class="service-code">BFNT - Support Services</text>
-
-<rect x="1060" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="1120" y="485" class="title">DataPower Services</text>
-<text x="1120" y="500" class="service-code">WSCON/CDAL/BOLB</text>
-
-<rect x="1200" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="1260" y="485" class="title">Intended Use Reference</text>
-<text x="1260" y="500" class="service-code">BFXM - Business Rules</text>
-
-<rect x="1340" y="470" width="120" height="40" class="process" rx="5"/>
-<text x="1400" y="485" class="title">Customer Services</text>
-<text x="1400" y="500" class="service-code">BCON - Authentication</text>
-
-<!-- DATA STORAGE & PERSISTENCE AREA -->
-<rect x="80" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="140" y="635" class="title">Customer Database</text>
-<text x="140" y="650" class="text">MongoDB</text>
-<text x="140" y="665" class="service-code">Customer Profiles - BFBK</text>
-
-<rect x="220" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="280" y="635" class="title">Document Vault</text>
-<text x="280" y="650" class="text">MEVS</text>
-<text x="280" y="665" class="service-code">Secure Document Storage</text>
-
-<rect x="360" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="420" y="635" class="title">Case Database</text>
-<text x="420" y="650" class="text">WSCON</text>
-<text x="420" y="665" class="service-code">Workflow Management</text>
-
-<rect x="500" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="560" y="635" class="title">Account System</text>
-<text x="560" y="650" class="text">CAAS</text>
-<text x="560" y="665" class="service-code">Account Management</text>
-
-<rect x="640" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="700" y="635" class="title">Reference Data</text>
-<text x="700" y="650" class="text">ROM</text>
-<text x="700" y="665" class="service-code">Lookup Tables</text>
-
-<rect x="780" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="840" y="635" class="title">Simple Storage</text>
-<text x="840" y="650" class="text">BCON</text>
-<text x="840" y="665" class="service-code">File Storage</text>
-
-<rect x="920" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="980" y="635" class="title">Global Branch DB</text>
-<text x="980" y="650" class="text">BCON</text>
-<text x="980" y="665" class="service-code">Branch Locations</text>
-
-<rect x="1060" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="1120" y="635" class="title">Audit Database</text>
-<text x="1120" y="650" class="text">System Logs</text>
-<text x="1120" y="665" class="service-code">Compliance Tracking</text>
-
-<rect x="1200" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="1260" y="635" class="title">MCM</text>
-<text x="1260" y="650" class="text">BCJR</text>
-<text x="1260" y="665" class="service-code">Customer Management</text>
-
-<rect x="1340" y="620" width="120" height="50" class="datastore" rx="5"/>
-<text x="1400" y="635" class="title">e-Consent</text>
-<text x="1400" y="650" class="text">BFSB</text>
-<text x="1400" y="665" class="service-code">Consent Management</text>
-
-<!-- PRIMARY PROCESS FLOWS -->
-<path d="M 180 125 L 200 125" class="primary-flow"/>
-<text x="190" y="115" class="flow-label">User Input</text>
-
-<path d="M 300 125 L 320 125" class="primary-flow"/>
-<text x="310" y="115" class="flow-label">UI Flow</text>
-
-<path d="M 260 150 L 260 170" class="primary-flow"/>
-<text x="280" y="160" class="flow-label">Collect Data</text>
-
-<path d="M 340 195 L 600 195" class="primary-flow"/>
-<path d="M 600 195 L 600 150" class="primary-flow"/>
-<text x="470" y="185" class="flow-label">Application Data Transfer</text>
-
-<path d="M 700 125 L 720 125" class="primary-flow"/>
-<text x="710" y="115" class="flow-label">Auth Check</text>
-
-<path d="M 820 125 L 850 125" class="primary-flow"/>
-<text x="835" y="115" class="flow-label">Process Docs</text>
-
-<path d="M 900 150 L 900 180" class="primary-flow"/>
-<path d="M 900 180 L 700 180" class="primary-flow"/>
-<text x="800" y="170" class="flow-label">Validate Data</text>
-
-<path d="M 700 200 L 1120 200" class="validation-flow"/>
-<path d="M 1120 200 L 1120 150" class="validation-flow"/>
-<text x="910" y="190" class="flow-label">External Verification</text>
-
-<path d="M 1240 125 L 1260 125" class="validation-flow"/>
-<text x="1250" y="115" class="flow-label">Registry Check</text>
-
-<path d="M 1380 125 L 1400 125" class="validation-flow"/>
-<text x="1390" y="115" class="flow-label">3rd Party Verify</text>
-
-<path d="M 1270 150 L 1270 170" class="data-read-flow"/>
-<text x="1290" y="160" class="flow-label">Results</text>
-
-<path d="M 1190 195 L 650 195" class="data-read-flow"/>
-<path d="M 650 195 L 650 220" class="data-read-flow"/>
-<text x="920" y="185" class="flow-label">Verification Results</text>
-
-<!-- Validation Decision Flows -->
-<path d="M 650 240 L 650 300" class="primary-flow"/>
-<text x="670" y="270" class="flow-label">Valid Data</text>
-
-<!-- Error/Retry Flow - Fixed Path -->
-<path d="M 620 200 L 520 200" class="error-flow"/>
-<path d="M 520 200 L 520 80" class="error-flow"/>
-<path d="M 520 80 L 370 80" class="error-flow"/>
-<path d="M 370 80 L 370 100" class="error-flow"/>
-<text x="570" y="190" class="flow-label" fill="#dc2626" font-weight="bold">INVALID DATA</text>
-<text x="445" y="70" class="flow-label" fill="#dc2626" font-weight="bold">RETRY INPUT</text>
-
-<!-- Business Logic Processing -->
-<path d="M 650 300 L 130 300" class="primary-flow"/>
-<text x="390" y="290" class="flow-label">Process Customer</text>
-
-<!-- Cross Process Flows -->
-<path d="M 180 325 L 200 325" class="primary-flow"/>
-<path d="M 300 325 L 320 325" class="primary-flow"/>
-<path d="M 420 325 L 440 325" class="primary-flow"/>
-<path d="M 540 325 L 560 325" class="primary-flow"/>
-<path d="M 660 325 L 680 325" class="primary-flow"/>
-<path d="M 780 325 L 800 325" class="primary-flow"/>
-<path d="M 900 325 L 920 325" class="primary-flow"/>
-<path d="M 1020 325 L 1040 325" class="primary-flow"/>
-<path d="M 1140 325 L 1160 325" class="primary-flow"/>
-<path d="M 1260 325 L 1280 325" class="primary-flow"/>
-<path d="M 1380 325 L 1400 325" class="primary-flow"/>
-
-<path d="M 730 350 L 730 380" class="primary-flow"/>
-<text x="750" y="365" class="flow-label">Check Rules</text>
-
-<path d="M 730 420 L 730 470" class="primary-flow"/>
-<text x="750" y="445" class="flow-label">Integration Services</text>
-
-<!-- Integration to Storage -->
-<path d="M 140 510 L 140 620" class="primary-flow"/>
-<path d="M 280 510 L 280 620" class="primary-flow"/>
-<path d="M 420 510 L 420 620" class="primary-flow"/>
-<path d="M 560 510 L 560 620" class="primary-flow"/>
-<path d="M 700 510 L 700 620" class="primary-flow"/>
-<path d="M 840 510 L 840 620" class="primary-flow"/>
-<path d="M 980 510 L 980 620" class="primary-flow"/>
-<path d="M 1120 510 L 1120 620" class="primary-flow"/>
-<path d="M 1260 510 L 1260 620" class="primary-flow"/>
-<path d="M 1400 510 L 1400 620" class="primary-flow"/>
-
-<!-- Legend -->
-<g id="legend">
-  <rect x="50" y="740" width="1500" height="120" fill="white" stroke="#e2e8f0" stroke-width="2" rx="8"/>
-  <text x="800" y="765" class="text" font-size="16" font-weight="bold">Application Data & Process Flow Legend</text>
-  
-  <line x1="100" y1="780" x2="140" y2="780" class="primary-flow"/>
-  <text x="150" y="785" class="text-start" font-weight="bold">Primary Flow</text>
-  <text x="150" y="800" class="text-start" font-size="9">Main application processing path (Customer data through system)</text>
-  
-  <line x1="350" y1="780" x2="390" y2="780" class="data-read-flow"/>
-  <text x="400" y="785" class="text-start" font-weight="bold">Data Read Flow</text>
-  <text x="400" y="800" class="text-start" font-size="9">Data retrieval and lookup operations</text>
-  
-  <line x1="600" y1="780" x2="640" y2="780" class="validation-flow"/>
-  <text x="650" y="785" class="text-start" font-weight="bold">Validation Flow</text>
-  <text x="650" y="800" class="text-start" font-size="9">External verification and validation processes</text>
-  
-  <line x1="850" y1="780" x2="890" y2="780" class="error-flow"/>
-  <text x="900" y="785" class="text-start" font-weight="bold">Error/Retry Flow</text>
-  <text x="900" y="800" class="text-start" font-size="9">Error handling and retry mechanisms</text>
-  
-  <polygon points="1200,775 1225,785 1200,795 1175,785" class="decision"/>
-  <text x="1240" y="785" class="text-start" font-weight="bold">Decision Point</text>
-  <text x="1240" y="800" class="text-start" font-size="9">Business logic decision or validation check</text>
-  
-  <text x="100" y="825" class="text-start" font-weight="bold">Process Flow Summary:</text>
-  <text x="100" y="840" class="text-start" font-size="9">1. Customer initiates application through UI → 2. Data collection and validation → 3. External verification →</text>
-  <text x="100" y="855" class="text-start" font-size="9">4. Business logic processing → 5. Integration services → 6. Data storage and persistence</text>
-</g>
-
-</svg>
+sequenceDiagram
+    actor Client
+    participant POB as POB System
+    participant BCAT as BCAT System
+    participant Queue as Fulfillment Queue
+    actor BCAS as BCAS Advisor
+    participant EDRR as EDRR System
+    participant WH as Work Hub
+    actor Branch as Branch Advisor
+    
+    Note over Client,Branch: STEP 1: Onboarding Complete
+    Client->>POB: Complete onboarding
+    activate POB
+    POB->>POB: Collect client & account info
+    POB->>BCAT: API Call: Create case with client data
+    deactivate POB
+    
+    Note over POB,Queue: STEP 2: Auto-generate Case
+    activate BCAT
+    BCAT->>BCAT: Receive API request
+    BCAT->>BCAT: Create case (Pending Action)
+    BCAT->>Queue: Assign to fulfillment queue
+    deactivate BCAT
+    Queue-->>BCAS: Case available for review
+    
+    Note over BCAS,EDRR: STEP 3: BCAS Advisor Review
+    activate BCAS
+    BCAS->>Queue: Pull case from queue
+    BCAS->>EDRR: Lookup client by CID/Account #
+    activate EDRR
+    EDRR-->>BCAS: Return client details
+    BCAS->>EDRR: Request documents
+    EDRR-->>BCAS: Return documents
+    deactivate EDRR
+    BCAS->>BCAS: Review documents
+    
+    alt Documents Complete
+        BCAS->>BCAT: Submit status: Completed
+        BCAT->>POB: API: Acknowledgement
+        POB-->>Client: Process complete
+    else Documents Need Correction
+        BCAS->>BCAT: Submit status: Pending Corrections
+        deactivate BCAS
+        
+        Note over BCAT,Branch: STEP 4: Branch Advisor Correction
+        activate BCAT
+        BCAT->>WH: Transit case to Work Hub
+        deactivate BCAT
+        activate WH
+        WH->>Branch: Display in dashboard
+        deactivate WH
+        activate Branch
+        Branch->>WH: Access case
+        activate WH
+        Branch->>WH: Work on corrections
+        Branch->>WH: Submit updates
+        WH->>BCAT: Send updates back to BCAS
+        deactivate WH
+        deactivate Branch
+        
+        Note over BCAS,Branch: LOOP: Repeat Steps 3-4 until resolved
+        activate BCAT
+        BCAT->>Queue: Re-assign to BCAS queue
+        deactivate BCAT
+        Queue-->>BCAS: Case available for re-review
+        
+        activate BCAS
+        BCAS->>Queue: Pull updated case
+        BCAS->>BCAS: Review corrections
+        
+        alt Corrections Accepted
+            BCAS->>BCAT: Submit status: Resolved/Completed
+            deactivate BCAS
+            Note over BCAT,POB: STEP 5: Final Acknowledgement
+            activate BCAT
+            BCAT->>POB: API: Acknowledgement
+            deactivate BCAT
+            activate POB
+            POB-->>Client: Process complete
+            deactivate POB
+        else More Corrections Needed
+            BCAS->>BCAT: Submit status: Pending Corrections
+            Note right of BCAS: Loop continues...
+        end
+    end
+    
+    Note over Client,Branch: Process Complete
+    
+    rect rgb(255, 240, 240)
+        Note over Client,Branch: Error Handling Points:<br/>- API failures at Step 1, 2, 5<br/>- EDRR lookup failures<br/>- Timeout on advisor actions<br/>- Case routing errors
+    end
